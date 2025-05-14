@@ -1,0 +1,6 @@
+CREATE TABLE IF NOT EXISTS carts (
+    id SERIAL PRIMARY KEY,
+    user_id BIGINT UNIQUE NOT NULL CHECK ( user_id > 0 ),
+    created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMP NOT NULL DEFAULT NOW()
+);
