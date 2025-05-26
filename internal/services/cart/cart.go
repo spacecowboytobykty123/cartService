@@ -2,12 +2,15 @@ package cart
 
 import (
 	subsgrpc "cartService/internal/clients/subscriptions/grpc"
+	"cartService/internal/clients/toys/grpc"
 	"cartService/internal/contextkeys"
 	"cartService/internal/data"
 	"cartService/internal/jsonlog"
 	"context"
-	cart_v1_crt "github.com/spacecowboytobykty123/protoCart/gen/go/cart"
+	"fmt"
+	cart_v1_crt "github.com/spacecowboytobykty123/protoCart/proto/gen/go/cart"
 	subs "github.com/spacecowboytobykty123/subsProto/gen/go/subscription"
+	"github.com/spacecowboytobykty123/toysProto/gen/go/toys"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"time"
@@ -18,6 +21,7 @@ type Carts struct {
 	cartProvider cartProvider
 	tokenTTL     time.Duration
 	subsClient   *subsgrpc.Client
+	toyClient    *grpc.ToyClient
 }
 
 type cartProvider interface {
@@ -26,12 +30,13 @@ type cartProvider interface {
 	GetCart(ctx context.Context, userID int64) ([]*data.CartItem, int32, int32)
 }
 
-func New(log *jsonlog.Logger, cartProvider cartProvider, tokenTTL time.Duration, subsClient *subsgrpc.Client) *Carts {
+func New(log *jsonlog.Logger, cartProvider cartProvider, tokenTTL time.Duration, subsClient *subsgrpc.Client, toyClient *grpc.ToyClient) *Carts {
 	return &Carts{
 		log:          log,
 		cartProvider: cartProvider,
 		tokenTTL:     tokenTTL,
 		subsClient:   subsClient,
+		toyClient:    toyClient,
 	}
 }
 
@@ -44,6 +49,14 @@ func (c Carts) AddToCart(ctx context.Context, toy data.CartItem) (cart_v1_crt.Op
 	subsResp := c.subsClient.CheckSubscription(ctx, userID)
 	if subsResp.SubStatus != subs.Status_STATUS_SUBSCRIBED {
 		return cart_v1_crt.OperationStatus_STATUS_INVALID_USER, "user is not subscribed!"
+	}
+
+	toyResp := c.toyClient.GetToy(ctx, toy.ToyID)
+	if toyResp.Status != toys.Status_STATUS_OK {
+		c.log.PrintError(fmt.Errorf("toy is not exist!"), map[string]string{
+			"method": "cart.addtocart",
+		})
+		return cart_v1_crt.OperationStatus_STATUS_INTERNAL_ERROR, "toy is not exist in database!"
 	}
 
 	opStatus, msg := c.cartProvider.AddToCart(ctx, toy, userID)
@@ -91,15 +104,15 @@ func (c Carts) GetCart(ctx context.Context) ([]*data.CartItem, int32, int32) {
 		return []*data.CartItem{}, 0, 0
 	}
 
-	toys, total_items, qty := c.cartProvider.GetCart(ctx, userID)
-	if toys == nil {
+	toysList, total_items, qty := c.cartProvider.GetCart(ctx, userID)
+	if toysList == nil {
 		c.log.PrintError(status.Error(codes.NotFound, "failed to fetch toys"), map[string]string{
 			"method": "cart.getCart",
 		})
 		return nil, 0, 0
 	}
 
-	return toys, total_items, qty
+	return toysList, total_items, qty
 }
 
 func getUserFromContext(ctx context.Context) (int64, error) {

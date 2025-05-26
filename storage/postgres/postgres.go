@@ -7,7 +7,7 @@ import (
 	"database/sql"
 	"errors"
 	_ "github.com/lib/pq"
-	cart_v1_crt "github.com/spacecowboytobykty123/protoCart/gen/go/cart"
+	cart_v1_crt "github.com/spacecowboytobykty123/protoCart/proto/gen/go/cart"
 	"time"
 )
 
@@ -121,6 +121,7 @@ WHERE user_id = $1 AND toy_id = $2
 		return cart_v1_crt.OperationStatus_STATUS_INTERNAL_ERROR, "failed to delete toy!"
 	}
 	return cart_v1_crt.OperationStatus_STATUS_OK, "deleted successfully"
+
 }
 
 func (s *Storage) GetCart(ctx context.Context, userID int64) ([]*data.CartItem, int32, int32) {

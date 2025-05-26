@@ -6,7 +6,7 @@ import (
 	"cartService/storage/postgres"
 	"context"
 	"fmt"
-	cart_v1_crt "github.com/spacecowboytobykty123/protoCart/gen/go/cart"
+	cart_v1_crt "github.com/spacecowboytobykty123/protoCart/proto/gen/go/cart"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
